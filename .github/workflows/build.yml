@@ -40,8 +40,8 @@ jobs:
           rm -rf "$HOME/theos/sdks"
           git clone --depth=1 https://github.com/theos/sdks.git "$HOME/theos/sdks"
 
-          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-          echo "$HOME/theos/bin" >> $GITHUB_PATH
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+          echo "$HOME/theos/bin" >> "$GITHUB_PATH"
 
           echo "Check Theos"
           ls -la "$HOME/theos"
@@ -58,16 +58,16 @@ jobs:
               PREF_DIR="$SDK/System/Library/PrivateFrameworks/Preferences.framework"
               mkdir -p "$PREF_DIR"
 
-              cat > "$PREF_DIR/Preferences.tbd" <<'EOF'
---- !tapi-tbd-v3
-archs:           [ arm64, arm64e ]
-platform:        ios
-install-name:    /System/Library/PrivateFrameworks/Preferences.framework/Preferences
-exports:
-  - archs:           [ arm64, arm64e ]
-    objc-classes:    [ PSListController, PSSpecifier ]
-...
-EOF
+              printf '%s\n' \
+                '--- !tapi-tbd-v3' \
+                'archs:           [ arm64, arm64e ]' \
+                'platform:        ios' \
+                'install-name:    /System/Library/PrivateFrameworks/Preferences.framework/Preferences' \
+                'exports:' \
+                '  - archs:           [ arm64, arm64e ]' \
+                '    objc-classes:    [ PSListController, PSSpecifier ]' \
+                '...' \
+                > "$PREF_DIR/Preferences.tbd"
 
               echo "Added stub: $PREF_DIR/Preferences.tbd"
             fi
