@@ -14,27 +14,30 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install roothide theos with retry
+      - name: Setup roothide theos manually
         run: |
           set -e
 
-          for i in 1 2 3 4 5; do
-            echo "Install attempt $i..."
-            if bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"; then
-              echo "roothide/theos installed successfully"
-              exit 0
-            fi
+          echo "Remove old theos if exists"
+          rm -rf "$HOME/theos"
 
-            echo "Install failed, retrying in 20 seconds..."
-            sleep 20
-          done
+          echo "Clone roothide/theos"
+          git clone --recursive https://github.com/roothide/theos.git "$HOME/theos"
 
-          echo "Failed to install roothide/theos after retries"
-          exit 1
+          echo "Clone Theos SDKs"
+          rm -rf "$HOME/theos/sdks"
+          git clone --depth=1 https://github.com/theos/sdks.git "$HOME/theos/sdks"
+
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+          echo "$HOME/theos/bin" >> $GITHUB_PATH
+
+          echo "Check Theos"
+          ls -la "$HOME/theos"
+          ls -la "$HOME/theos/sdks"
 
       - name: Build package
         run: |
-          export THEOS=$HOME/theos
+          export THEOS="$HOME/theos"
           make clean
           make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
 
