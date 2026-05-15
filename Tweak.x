@@ -1,8 +1,5 @@
 #import <UIKit/UIKit.h>
 #import <QuartzCore/QuartzCore.h>
-#import <objc/runtime.h>
-
-static NSInteger const kHLGCGlassTag = 260026;
 
 static void HLGC_CollectLabels(UIView *view, NSMutableArray<UILabel *> *labels) {
     if (!view || !labels) return;
@@ -22,156 +19,183 @@ static NSArray<UILabel *> *HLGC_FindLabels(UIView *root) {
     return labels;
 }
 
-static UIVisualEffectView *HLGC_GlassViewForContainer(UIView *container) {
-    for (UIView *subview in container.subviews) {
-        if (subview.tag == kHLGCGlassTag &&
-            [subview isKindOfClass:[UIVisualEffectView class]]) {
-            return (UIVisualEffectView *)subview;
-        }
-    }
+static BOOL HLGC_IsClockLabel(UILabel *label) {
+    if (!label) return NO;
 
-    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialLight];
-    UIVisualEffectView *glass = [[UIVisualEffectView alloc] initWithEffect:blur];
+    NSString *text = label.text ?: @"";
+    CGFloat fontSize = label.font.pointSize;
 
-    glass.tag = kHLGCGlassTag;
-    glass.userInteractionEnabled = NO;
-    glass.clipsToBounds = YES;
-    glass.alpha = 0.72;
+    if (text.length == 0) return NO;
 
-    glass.layer.cornerRadius = 30.0;
+    // Clock label trên lockscreen thường có font lớn nhất
+    if (fontSize >= 45.0) return YES;
 
-    if (@available(iOS 13.0, *)) {
-        glass.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    // Dự phòng: text có dấu ":" và ít ký tự, ví dụ 9:41 / 09:41
+    if ([text containsString:@":"] && text.length <= 5) return YES;
 
-    glass.layer.borderWidth = 1.0;
-    glass.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.35].CGColor;
-
-    glass.layer.shadowColor = [UIColor blackColor].CGColor;
-    glass.layer.shadowOpacity = 0.25;
-    glass.layer.shadowRadius = 18.0;
-    glass.layer.shadowOffset = CGSizeMake(0, 8);
-
-    CAGradientLayer *shine = [CAGradientLayer layer];
-    shine.name = @"HLGCShineLayer";
-    shine.colors = @[
-        (__bridge id)[UIColor colorWithWhite:1.0 alpha:0.55].CGColor,
-        (__bridge id)[UIColor colorWithWhite:1.0 alpha:0.14].CGColor,
-        (__bridge id)[UIColor colorWithWhite:1.0 alpha:0.04].CGColor
-    ];
-    shine.locations = @[@0.0, @0.42, @1.0];
-    shine.startPoint = CGPointMake(0.0, 0.0);
-    shine.endPoint = CGPointMake(1.0, 1.0);
-
-    [glass.contentView.layer addSublayer:shine];
-    [container insertSubview:glass atIndex:0];
-
-    return glass;
+    return NO;
 }
 
-static void HLGC_UpdateInnerStroke(UIVisualEffectView *glass) {
-    if (!glass) return;
+static void HLGC_StyleClockLabel(UILabel *label) {
+    if (!label) return;
 
-    CAShapeLayer *innerStroke = nil;
+    NSString *text = label.text ?: @"";
+    if (text.length == 0) return;
 
-    for (CALayer *layer in glass.layer.sublayers) {
-        if ([layer.name isEqualToString:@"HLGCInnerStroke"]) {
-            innerStroke = (CAShapeLayer *)layer;
-            break;
-        }
+    CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
+
+    /*
+     Kiểu giống ảnh:
+     - Font lớn
+     - Mảnh
+     - Rất trong suốt
+     */
+    CGFloat newSize = screenWidth * 0.37;
+
+    if (newSize < 132.0) newSize = 132.0;
+    if (newSize > 165.0) newSize = 165.0;
+
+    UIFont *font = nil;
+
+    // Font mảnh giống iOS lockscreen hiện đại
+    font = [UIFont systemFontOfSize:newSize weight:UIFontWeightThin];
+
+    if (font) {
+        label.font = font;
     }
 
-    if (!innerStroke) {
-        innerStroke = [CAShapeLayer layer];
-        innerStroke.name = @"HLGCInnerStroke";
-        innerStroke.fillColor = UIColor.clearColor.CGColor;
-        innerStroke.strokeColor = [UIColor colorWithWhite:1.0 alpha:0.42].CGColor;
-        innerStroke.lineWidth = 1.2;
-        [glass.layer addSublayer:innerStroke];
+    label.textColor = [UIColor colorWithWhite:1.0 alpha:0.50];
+    label.alpha = 1.0;
+
+    label.textAlignment = NSTextAlignmentCenter;
+    label.adjustsFontSizeToFitWidth = YES;
+    label.minimumScaleFactor = 0.65;
+    label.numberOfLines = 1;
+
+    label.layer.shadowColor = [UIColor whiteColor].CGColor;
+    label.layer.shadowOpacity = 0.12;
+    label.layer.shadowRadius = 2.0;
+    label.layer.shadowOffset = CGSizeMake(0, 0);
+
+    label.layer.masksToBounds = NO;
+
+    // Tạo cảm giác “glass”: viền trong nhẹ + chữ trong suốt
+    NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithString:text];
+
+    if (attr.length > 0) {
+        [attr addAttribute:NSForegroundColorAttributeName
+                     value:[UIColor colorWithWhite:1.0 alpha:0.52]
+                     range:NSMakeRange(0, attr.length)];
+
+        [attr addAttribute:NSStrokeColorAttributeName
+                     value:[UIColor colorWithWhite:1.0 alpha:0.18]
+                     range:NSMakeRange(0, attr.length)];
+
+        [attr addAttribute:NSStrokeWidthAttributeName
+                     value:@(-1.0)
+                     range:NSMakeRange(0, attr.length)];
+
+        [attr addAttribute:NSKernAttributeName
+                     value:@(-6.0)
+                     range:NSMakeRange(0, attr.length)];
+
+        label.attributedText = attr;
     }
 
-    CGFloat radius = MAX(glass.layer.cornerRadius - 1.0, 1.0);
+    UIView *superview = label.superview;
+    if (superview) {
+        CGRect frame = label.frame;
 
-    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:CGRectInset(glass.bounds, 1.0, 1.0)
-                                                    cornerRadius:radius];
+        frame.size.width = screenWidth;
+        frame.size.height = newSize * 1.05;
+        frame.origin.x = -superview.frame.origin.x;
 
-    innerStroke.frame = glass.bounds;
-    innerStroke.path = path.CGPath;
+        // Đẩy đồng hồ lên cao giống ảnh
+        frame.origin.y = -10.0;
+
+        label.frame = frame;
+    }
 }
 
-static void HLGC_UpdateShineLayer(UIVisualEffectView *glass) {
-    if (!glass) return;
+static void HLGC_StyleDateLabel(UILabel *label) {
+    if (!label) return;
 
-    for (CALayer *layer in glass.contentView.layer.sublayers) {
-        if ([layer.name isEqualToString:@"HLGCShineLayer"]) {
-            layer.frame = glass.bounds;
-        }
+    NSString *text = label.text ?: @"";
+    if (text.length == 0) return;
+
+    CGFloat fontSize = 13.0;
+
+    UIFont *font = [UIFont systemFontOfSize:fontSize weight:UIFontWeightSemibold];
+    if (font) {
+        label.font = font;
+    }
+
+    label.textColor = [UIColor colorWithWhite:1.0 alpha:0.82];
+    label.alpha = 1.0;
+    label.textAlignment = NSTextAlignmentCenter;
+
+    label.layer.shadowColor = [UIColor blackColor].CGColor;
+    label.layer.shadowOpacity = 0.18;
+    label.layer.shadowRadius = 2.0;
+    label.layer.shadowOffset = CGSizeMake(0, 1);
+
+    UIView *superview = label.superview;
+    if (superview) {
+        CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
+        CGRect frame = label.frame;
+
+        frame.size.width = screenWidth;
+        frame.size.height = 22.0;
+        frame.origin.x = -superview.frame.origin.x;
+
+        // Ngày nằm trên đồng hồ
+        frame.origin.y = -4.0;
+
+        label.frame = frame;
     }
 }
 
 static void HLGC_ApplyClockStyle(UIView *dateView) {
     if (!dateView) return;
-    if (CGRectIsEmpty(dateView.bounds)) return;
 
     NSArray<UILabel *> *labels = HLGC_FindLabels(dateView);
 
+    UILabel *clockLabel = nil;
+
     for (UILabel *label in labels) {
-        NSString *text = label.text ?: @"";
-        if (text.length == 0) continue;
-
-        CGFloat fontSize = label.font.pointSize;
-
-        label.textColor = [UIColor colorWithWhite:1.0 alpha:0.94];
-
-        label.layer.shadowColor = [UIColor blackColor].CGColor;
-        label.layer.shadowOpacity = 0.32;
-        label.layer.shadowRadius = 8.0;
-        label.layer.shadowOffset = CGSizeMake(0, 2);
-
-        if (fontSize >= 50.0) {
-            UIFontDescriptor *descriptor = [UIFontDescriptor fontDescriptorWithName:@".SFUIRounded-Heavy"
-                                                                               size:fontSize];
-
-            UIFont *font = [UIFont fontWithDescriptor:descriptor size:fontSize];
-
-            if (font) {
-                label.font = font;
+        if (HLGC_IsClockLabel(label)) {
+            if (!clockLabel || label.font.pointSize > clockLabel.font.pointSize) {
+                clockLabel = label;
             }
-
-            label.alpha = 0.98;
-        } else {
-            UIFontDescriptor *descriptor = [UIFontDescriptor fontDescriptorWithName:@".SFUIRounded-Semibold"
-                                                                               size:fontSize];
-
-            UIFont *font = [UIFont fontWithDescriptor:descriptor size:fontSize];
-
-            if (font) {
-                label.font = font;
-            }
-
-            label.alpha = 0.88;
         }
     }
 
-    CGRect bounds = dateView.bounds;
+    for (UILabel *label in labels) {
+        if (label == clockLabel) {
+            HLGC_StyleClockLabel(label);
+        } else {
+            HLGC_StyleDateLabel(label);
+        }
+    }
 
-    CGFloat glassWidth = MAX(bounds.size.width + 36.0, 235.0);
-    CGFloat glassHeight = MAX(bounds.size.height + 24.0, 98.0);
+    // Đẩy toàn bộ cụm ngày/giờ lên cao gần Dynamic Island
+    CGRect frame = dateView.frame;
 
-    CGRect glassFrame = CGRectMake(
-        (bounds.size.width - glassWidth) / 2.0,
-        (bounds.size.height - glassHeight) / 2.0,
-        glassWidth,
-        glassHeight
-    );
+    frame.origin.y = 52.0;
 
-    UIVisualEffectView *glass = HLGC_GlassViewForContainer(dateView);
+    CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
+    frame.origin.x = 0.0;
+    frame.size.width = screenWidth;
+    frame.size.height = 190.0;
 
-    glass.frame = glassFrame;
-    glass.layer.cornerRadius = MIN(34.0, glassHeight / 2.6);
+    dateView.frame = frame;
+    dateView.clipsToBounds = NO;
+    dateView.layer.masksToBounds = NO;
 
-    HLGC_UpdateShineLayer(glass);
-    HLGC_UpdateInnerStroke(glass);
+    for (UIView *subview in dateView.subviews) {
+        subview.clipsToBounds = NO;
+        subview.layer.masksToBounds = NO;
+    }
 }
 
 %hook SBFLockScreenDateView
@@ -195,5 +219,5 @@ static void HLGC_ApplyClockStyle(UIView *dateView) {
 %end
 
 %ctor {
-    NSLog(@"[HaiLockGlassClock] Loaded");
+    NSLog(@"[HaiLockGlassClock] Loaded - iOS26 large clock style");
 }
