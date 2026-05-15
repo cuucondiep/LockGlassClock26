@@ -67,4 +67,3 @@ static CFStringRef const kHLGCPrefsChangedNotification = CFSTR("com.hai.hailockg
 }
 
 @end
-``
