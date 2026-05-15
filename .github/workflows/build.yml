@@ -14,6 +14,18 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: |
+          set -e
+
+          echo "Install ldid"
+          brew update
+          brew install ldid || true
+
+          echo "Check ldid"
+          which ldid
+          ldid -v || true
+
       - name: Setup roothide theos manually
         run: |
           set -e
@@ -38,6 +50,9 @@ jobs:
       - name: Build package
         run: |
           export THEOS="$HOME/theos"
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+          which ldid
           make clean
           make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
 
