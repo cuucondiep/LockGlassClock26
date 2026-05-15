@@ -14,15 +14,34 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install roothide theos
+      - name: Install roothide theos with retry
         run: |
-          bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
+          set -e
+
+          for i in 1 2 3 4 5; do
+            echo "Install attempt $i..."
+            if bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"; then
+              echo "roothide/theos installed successfully"
+              exit 0
+            fi
+
+            echo "Install failed, retrying in 20 seconds..."
+            sleep 20
+          done
+
+          echo "Failed to install roothide/theos after retries"
+          exit 1
 
       - name: Build package
         run: |
-          export THEOS=~/theos
+          export THEOS=$HOME/theos
           make clean
           make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
+
+      - name: List packages
+        run: |
+          ls -la
+          ls -la packages || true
 
       - name: Upload deb file
         uses: actions/upload-artifact@v4
