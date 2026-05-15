@@ -1,5 +1,68 @@
 #import <UIKit/UIKit.h>
 #import <QuartzCore/QuartzCore.h>
+#import <CoreFoundation/CoreFoundation.h>
+
+static CFStringRef const kHLGCPrefsDomain = CFSTR("com.hai.hailockglassclockprefs");
+static CFStringRef const kHLGCPrefsChangedNotification = CFSTR("com.hai.hailockglassclockprefs/Reload");
+
+static BOOL gHLGCEnabled = YES;
+static CGFloat gHLGCClockY = 45.0;
+static CGFloat gHLGCClockScale = 0.39;
+static CGFloat gHLGCClockAlpha = 0.48;
+
+static BOOL HLGC_ReadBool(NSString *key, BOOL fallback) {
+    CFPropertyListRef value = CFPreferencesCopyAppValue((__bridge CFStringRef)key, kHLGCPrefsDomain);
+    id obj = CFBridgingRelease(value);
+
+    if ([obj isKindOfClass:[NSNumber class]]) {
+        return [obj boolValue];
+    }
+
+    return fallback;
+}
+
+static CGFloat HLGC_ReadFloat(NSString *key, CGFloat fallback) {
+    CFPropertyListRef value = CFPreferencesCopyAppValue((__bridge CFStringRef)key, kHLGCPrefsDomain);
+    id obj = CFBridgingRelease(value);
+
+    if ([obj isKindOfClass:[NSNumber class]]) {
+        return (CGFloat)[obj doubleValue];
+    }
+
+    return fallback;
+}
+
+static void HLGC_LoadPrefs(void) {
+    CFPreferencesAppSynchronize(kHLGCPrefsDomain);
+
+    gHLGCEnabled = HLGC_ReadBool(@"Enabled", YES);
+    gHLGCClockY = HLGC_ReadFloat(@"ClockY", 45.0);
+    gHLGCClockScale = HLGC_ReadFloat(@"ClockScale", 0.39);
+    gHLGCClockAlpha = HLGC_ReadFloat(@"ClockAlpha", 0.48);
+
+    if (gHLGCClockY < 0.0) gHLGCClockY = 0.0;
+    if (gHLGCClockY > 160.0) gHLGCClockY = 160.0;
+
+    if (gHLGCClockScale < 0.25) gHLGCClockScale = 0.25;
+    if (gHLGCClockScale > 0.50) gHLGCClockScale = 0.50;
+
+    if (gHLGCClockAlpha < 0.10) gHLGCClockAlpha = 0.10;
+    if (gHLGCClockAlpha > 1.00) gHLGCClockAlpha = 1.00;
+
+    NSLog(@"[HaiLockGlassClock] prefs loaded enabled=%d y=%.2f scale=%.2f alpha=%.2f",
+          gHLGCEnabled,
+          gHLGCClockY,
+          gHLGCClockScale,
+          gHLGCClockAlpha);
+}
+
+static void HLGC_PrefsChanged(CFNotificationCenterRef center,
+                              void *observer,
+                              CFStringRef name,
+                              const void *object,
+                              CFDictionaryRef userInfo) {
+    HLGC_LoadPrefs();
+}
 
 static void HLGC_CollectLabels(UIView *view, NSMutableArray<UILabel *> *labels) {
     if (!view || !labels) return;
@@ -27,10 +90,8 @@ static BOOL HLGC_IsClockLabel(UILabel *label) {
 
     if (text.length == 0) return NO;
 
-    // Clock label trên lockscreen thường có font lớn nhất
     if (fontSize >= 45.0) return YES;
 
-    // Dự phòng: text có dấu ":" và ít ký tự, ví dụ 9:41 / 09:41
     if ([text containsString:@":"] && text.length <= 5) return YES;
 
     return NO;
@@ -44,27 +105,18 @@ static void HLGC_StyleClockLabel(UILabel *label) {
 
     CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
 
-    /*
-     Kiểu giống ảnh:
-     - Font lớn
-     - Mảnh
-     - Rất trong suốt
-     */
-    CGFloat newSize = screenWidth * 0.37;
+    CGFloat newSize = screenWidth * gHLGCClockScale;
 
-    if (newSize < 132.0) newSize = 132.0;
-    if (newSize > 165.0) newSize = 165.0;
+    if (newSize < 110.0) newSize = 110.0;
+    if (newSize > 180.0) newSize = 180.0;
 
-    UIFont *font = nil;
-
-    // Font mảnh giống iOS lockscreen hiện đại
-    font = [UIFont systemFontOfSize:newSize weight:UIFontWeightThin];
+    UIFont *font = [UIFont systemFontOfSize:newSize weight:UIFontWeightThin];
 
     if (font) {
         label.font = font;
     }
 
-    label.textColor = [UIColor colorWithWhite:1.0 alpha:0.50];
+    label.textColor = [UIColor colorWithWhite:1.0 alpha:gHLGCClockAlpha];
     label.alpha = 1.0;
 
     label.textAlignment = NSTextAlignmentCenter;
@@ -79,12 +131,11 @@ static void HLGC_StyleClockLabel(UILabel *label) {
 
     label.layer.masksToBounds = NO;
 
-    // Tạo cảm giác “glass”: viền trong nhẹ + chữ trong suốt
     NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithString:text];
 
     if (attr.length > 0) {
         [attr addAttribute:NSForegroundColorAttributeName
-                     value:[UIColor colorWithWhite:1.0 alpha:0.52]
+                     value:[UIColor colorWithWhite:1.0 alpha:gHLGCClockAlpha]
                      range:NSMakeRange(0, attr.length)];
 
         [attr addAttribute:NSStrokeColorAttributeName
@@ -103,14 +154,13 @@ static void HLGC_StyleClockLabel(UILabel *label) {
     }
 
     UIView *superview = label.superview;
+
     if (superview) {
         CGRect frame = label.frame;
 
         frame.size.width = screenWidth;
         frame.size.height = newSize * 1.05;
         frame.origin.x = -superview.frame.origin.x;
-
-        // Đẩy đồng hồ lên cao giống ảnh
         frame.origin.y = -10.0;
 
         label.frame = frame;
@@ -123,9 +173,8 @@ static void HLGC_StyleDateLabel(UILabel *label) {
     NSString *text = label.text ?: @"";
     if (text.length == 0) return;
 
-    CGFloat fontSize = 13.0;
+    UIFont *font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
 
-    UIFont *font = [UIFont systemFontOfSize:fontSize weight:UIFontWeightSemibold];
     if (font) {
         label.font = font;
     }
@@ -140,6 +189,7 @@ static void HLGC_StyleDateLabel(UILabel *label) {
     label.layer.shadowOffset = CGSizeMake(0, 1);
 
     UIView *superview = label.superview;
+
     if (superview) {
         CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
         CGRect frame = label.frame;
@@ -147,8 +197,6 @@ static void HLGC_StyleDateLabel(UILabel *label) {
         frame.size.width = screenWidth;
         frame.size.height = 22.0;
         frame.origin.x = -superview.frame.origin.x;
-
-        // Ngày nằm trên đồng hồ
         frame.origin.y = -4.0;
 
         label.frame = frame;
@@ -157,6 +205,8 @@ static void HLGC_StyleDateLabel(UILabel *label) {
 
 static void HLGC_ApplyClockStyle(UIView *dateView) {
     if (!dateView) return;
+
+    if (!gHLGCEnabled) return;
 
     NSArray<UILabel *> *labels = HLGC_FindLabels(dateView);
 
@@ -178,12 +228,12 @@ static void HLGC_ApplyClockStyle(UIView *dateView) {
         }
     }
 
-    // Đẩy toàn bộ cụm ngày/giờ lên cao gần Dynamic Island
     CGRect frame = dateView.frame;
 
-    frame.origin.y = 52.0;
+    frame.origin.y = gHLGCClockY;
 
     CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
+
     frame.origin.x = 0.0;
     frame.size.width = screenWidth;
     frame.size.height = 190.0;
@@ -204,6 +254,7 @@ static void HLGC_ApplyClockStyle(UIView *dateView) {
     %orig;
 
     dispatch_async(dispatch_get_main_queue(), ^{
+        HLGC_LoadPrefs();
         HLGC_ApplyClockStyle((UIView *)self);
     });
 }
@@ -219,5 +270,14 @@ static void HLGC_ApplyClockStyle(UIView *dateView) {
 %end
 
 %ctor {
-    NSLog(@"[HaiLockGlassClock] Loaded - iOS26 large clock style");
+    HLGC_LoadPrefs();
+
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                    NULL,
+                                    HLGC_PrefsChanged,
+                                    kHLGCPrefsChangedNotification,
+                                    NULL,
+                                    CFNotificationSuspensionBehaviorDeliverImmediately);
+
+    NSLog(@"[HaiLockGlassClock] Loaded with preferences");
 }
