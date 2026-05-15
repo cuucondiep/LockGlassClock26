@@ -47,6 +47,34 @@ jobs:
           ls -la "$HOME/theos"
           ls -la "$HOME/theos/sdks"
 
+      - name: Add Preferences framework stub
+        run: |
+          set -e
+
+          echo "Creating Preferences.framework stub in all iPhoneOS SDKs"
+
+          for SDK in "$HOME"/theos/sdks/iPhoneOS*.sdk; do
+            if [ -d "$SDK" ]; then
+              PREF_DIR="$SDK/System/Library/PrivateFrameworks/Preferences.framework"
+              mkdir -p "$PREF_DIR"
+
+              cat > "$PREF_DIR/Preferences.tbd" <<'EOF'
+--- !tapi-tbd-v3
+archs:           [ arm64, arm64e ]
+platform:        ios
+install-name:    /System/Library/PrivateFrameworks/Preferences.framework/Preferences
+exports:
+  - archs:           [ arm64, arm64e ]
+    objc-classes:    [ PSListController, PSSpecifier ]
+...
+EOF
+
+              echo "Added stub: $PREF_DIR/Preferences.tbd"
+            fi
+          done
+
+          find "$HOME/theos/sdks" -path "*Preferences.framework*" -print
+
       - name: Build package
         run: |
           export THEOS="$HOME/theos"
@@ -54,7 +82,7 @@ jobs:
 
           which ldid
           make clean
-          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
+          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide messages=yes
 
       - name: List packages
         run: |
