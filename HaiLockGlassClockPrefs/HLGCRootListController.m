@@ -57,7 +57,14 @@ static CFStringRef const kHLGCPrefsChangedNotification = CFSTR("com.hai.hailockg
 - (void)respring {
     pid_t pid;
     const char *argv[] = {"killall", "SpringBoard", NULL};
-    posix_spawn(&pid, "/usr/bin/killall", NULL, NULL, (char * const *)argv, environ);
+
+    posix_spawn(&pid,
+                "/usr/bin/killall",
+                NULL,
+                NULL,
+                (char * const *)argv,
+                environ);
 }
 
 @end
+``
