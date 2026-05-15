@@ -1,19 +1,11 @@
-ARCHS = arm64 arm64e
-TARGET = iphone:clang:latest:16.0
-THEOS_PACKAGE_SCHEME = roothide
-
-export GO_EASY_ON_ME = 1
-
 include $(THEOS)/makefiles/common.mk
 
-TWEAK_NAME = HaiLockGlassClock
+BUNDLE_NAME = HaiLockGlassClockPrefs
 
-HaiLockGlassClock_FILES = Tweak.x
-HaiLockGlassClock_CFLAGS = -fobjc-arc
-HaiLockGlassClock_FRAMEWORKS = UIKit QuartzCore
+HaiLockGlassClockPrefs_FILES = HLGCRootListController.m
+HaiLockGlassClockPrefs_CFLAGS = -fobjc-arc
+HaiLockGlassClockPrefs_FRAMEWORKS = UIKit
+HaiLockGlassClockPrefs_PRIVATE_FRAMEWORKS = Preferences
+HaiLockGlassClockPrefs_INSTALL_PATH = /Library/PreferenceBundles
 
-include $(THEOS_MAKE_PATH)/tweak.mk
-
-SUBPROJECTS += HaiLockGlassClockPrefs
-
-include $(THEOS_MAKE_PATH)/aggregate.mk
+include $(THEOS_MAKE_PATH)/bundle.mk
