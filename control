@@ -1,0 +1,9 @@
+Package: com.hai.hailockglassclock
+Name: HaiLockGlassClock
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: iOS 26 style glass lockscreen clock for iOS 16
+Maintainer: HAI
+Author: HAI
+Section: Tweaks
+Depends: firmware (>= 16.0)

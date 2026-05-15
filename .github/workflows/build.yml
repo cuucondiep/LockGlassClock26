@@ -1,0 +1,31 @@
+name: Build HaiLockGlassClock Roothide
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install roothide theos
+        run: |
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
+
+      - name: Build package
+        run: |
+          export THEOS=~/theos
+          make clean
+          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
+
+      - name: Upload deb file
+        uses: actions/upload-artifact@v4
+        with:
+          name: HaiLockGlassClock-roothide-deb
+          path: packages/*.deb
