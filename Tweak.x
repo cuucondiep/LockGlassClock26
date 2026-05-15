@@ -4,22 +4,21 @@
 
 static NSInteger const kHLGCGlassTag = 260026;
 
+static void HLGC_CollectLabels(UIView *view, NSMutableArray<UILabel *> *labels) {
+    if (!view || !labels) return;
+
+    if ([view isKindOfClass:[UILabel class]]) {
+        [labels addObject:(UILabel *)view];
+    }
+
+    for (UIView *subview in view.subviews) {
+        HLGC_CollectLabels(subview, labels);
+    }
+}
+
 static NSArray<UILabel *> *HLGC_FindLabels(UIView *root) {
     NSMutableArray<UILabel *> *labels = [NSMutableArray array];
-
-    void (^__block walk)(UIView *) = ^(UIView *view) {
-        if (!view) return;
-
-        if ([view isKindOfClass:[UILabel class]]) {
-            [labels addObject:(UILabel *)view];
-        }
-
-        for (UIView *subview in view.subviews) {
-            walk(subview);
-        }
-    };
-
-    walk(root);
+    HLGC_CollectLabels(root, labels);
     return labels;
 }
 
@@ -40,7 +39,11 @@ static UIVisualEffectView *HLGC_GlassViewForContainer(UIView *container) {
     glass.alpha = 0.72;
 
     glass.layer.cornerRadius = 30.0;
-    glass.layer.cornerCurve = kCACornerCurveContinuous;
+
+    if (@available(iOS 13.0, *)) {
+        glass.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
     glass.layer.borderWidth = 1.0;
     glass.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.35].CGColor;
 
@@ -61,7 +64,6 @@ static UIVisualEffectView *HLGC_GlassViewForContainer(UIView *container) {
     shine.endPoint = CGPointMake(1.0, 1.0);
 
     [glass.contentView.layer addSublayer:shine];
-
     [container insertSubview:glass atIndex:0];
 
     return glass;
