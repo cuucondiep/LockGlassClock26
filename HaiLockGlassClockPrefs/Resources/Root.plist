@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>title</key>
+    <string>HaiLockGlassClock</string>
+
+    <key>items</key>
+    <array>
+        <dict>
+            <key>cell</key>
+            <string>PSSwitchCell</string>
+            <key>label</key>
+            <string>Bật tweak</string>
+            <key>key</key>
+            <string>Enabled</string>
+            <key>default</key>
+            <true/>
+            <key>defaults</key>
+            <string>com.hai.hailockglassclockprefs</string>
+        </dict>
+
+        <dict>
+            <key>cell</key>
+            <string>PSGroupCell</string>
+            <key>label</key>
+            <string>Vị trí và giao diện</string>
+        </dict>
+
+        <dict>
+            <key>cell</key>
+            <string>PSSliderCell</string>
+            <key>label</key>
+            <string>Vị trí Y</string>
+            <key>key</key>
+            <string>ClockY</string>
+            <key>default</key>
+            <real>45.0</real>
+            <key>min</key>
+            <real>0.0</real>
+            <key>max</key>
+            <real>160.0</real>
+            <key>showValue</key>
+            <true/>
+            <key>defaults</key>
+            <string>com.hai.hailockglassclockprefs</string>
+        </dict>
+
+        <dict>
+            <key>cell</key>
+            <string>PSSliderCell</string>
+            <key>label</key>
+            <string>Kích thước</string>
+            <key>key</key>
+            <string>ClockScale</string>
+            <key>default</key>
+            <real>0.39</real>
+            <key>min</key>
+            <real>0.25</real>
+            <key>max</key>
+            <real>0.50</real>
+            <key>showValue</key>
+            <true/>
+            <key>defaults</key>
+            <string>com.hai.hailockglassclockprefs</string>
+        </dict>
+
+        <dict>
+            <key>cell</key>
+            <string>PSSliderCell</string>
+            <key>label</key>
+            <string>Độ trong suốt</string>
+            <key>key</key>
+            <string>ClockAlpha</string>
+            <key>default</key>
+            <real>0.48</real>
+            <key>min</key>
+            <real>0.10</real>
+            <key>max</key>
+            <real>1.00</real>
+            <key>showValue</key>
+            <true/>
+            <key>defaults</key>
+            <string>com.hai.hailockglassclockprefs</string>
+        </dict>
+
+        <dict>
+            <key>cell</key>
+            <string>PSButtonCell</string>
+            <key>label</key>
+            <string>Respring</string>
+            <key>action</key>
+            <string>respring</string>
+        </dict>
+
+        <dict>
+            <key>cell</key>
+            <string>PSGroupCell</string>
+            <key>footerText</key>
+            <string>Gợi ý giống ảnh: Vị trí Y = 45, Kích thước = 0.39, Độ trong suốt = 0.48</string>
+        </dict>
+    </array>
+</dict>
+</plist>
